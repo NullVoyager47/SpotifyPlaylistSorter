@@ -22,8 +22,6 @@
   let selectedPlaylists = new Set();
   let deleteMode = false;
 
-  import { toApi } from '$lib/api';
-
   async function fetchPlaylists() {
     const token = localStorage.getItem('spotify_access_token');
     if (!token) {
@@ -34,7 +32,7 @@
     }
     try {
       // Fetch playlists
-      const res = await fetch(toApi('me/playlists'), {
+      const res = await fetch('https://api.spotify.com/v1/me/playlists', {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -63,7 +61,7 @@
       }
 
       // Fetch liked songs
-      const likedRes = await fetch(toApi('me/tracks?limit=1'), {
+      const likedRes = await fetch('https://api.spotify.com/v1/me/tracks?limit=1', {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -181,7 +179,7 @@
       if (playlistId === 'liked') continue;
       
       try {
-        const res = await fetch(toApi(`playlists/${playlistId}/followers`), {
+        const res = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/followers`, {
           method: 'DELETE',
           headers: {
             Authorization: `Bearer ${token}`
@@ -262,66 +260,54 @@
         processingProgress.stage = 'Fetching tracks...';
         if (playlist.isLiked) {
           localStorage.setItem('selected_playlist_id', 'liked-songs');
-          let url: string | null = toApi('me/tracks?limit=50&fields=items(track(uri,artists(id))),next,total');
+          let url = 'https://api.spotify.com/v1/me/tracks?limit=50&fields=items(track(uri,artists(id))),next,total';
           let trackCount = 0;
-          let totalTarget = playlist.tracks || 0;
           
           while (url) {
-            const likedTracksRes: Response = await fetch(url, {
+            const likedTracksRes = await fetch(url, {
               headers: {
                 Authorization: `Bearer ${token}`
               }
             });
-            const tracksData: any = await likedTracksRes.json();
-            if (!totalTarget && typeof tracksData.total === 'number') {
-              totalTarget = tracksData.total;
-            }
+            const tracksData = await likedTracksRes.json();
             
             if (tracksData.items) {
               allTracks.push(...tracksData.items);
               trackCount += tracksData.items.length;
-              const total = totalTarget || trackCount;
               processingProgress = { 
-                current: Math.min(trackCount, total), 
-                total, 
-                stage: `Fetching tracks (${Math.min(trackCount, total)}/${total})...` 
+                current: trackCount, 
+                total: playlist.tracks || trackCount, 
+                stage: `Fetching tracks (${trackCount}/${playlist.tracks || trackCount})...` 
               };
             }
-            url = tracksData.next ? toApi(tracksData.next) : null;
+            
+            url = tracksData.next;
           }
-          const finalTotal = totalTarget || trackCount;
-          processingProgress = { current: Math.min(trackCount, finalTotal), total: finalTotal, stage: 'Tracks fetched.' };
         } else {
           localStorage.setItem('selected_playlist_id', playlist.id);
-          let url: string | null = toApi(`playlists/${playlist.id}/tracks?limit=50&fields=items(track(uri,artists(id))),next,total`);
+          let url = `https://api.spotify.com/v1/playlists/${playlist.id}/tracks?limit=50&fields=items(track(uri,artists(id))),next,total`;
           let trackCount = 0;
-          let totalTarget = playlist.tracks || 0;
           
           while (url) {
-            const tracksRes: Response = await fetch(url, {
+            const tracksRes = await fetch(url, {
               headers: {
                 Authorization: `Bearer ${token}`
               }
             });
-            const tracksData: any = await tracksRes.json();
-            if (!totalTarget && typeof tracksData.total === 'number') {
-              totalTarget = tracksData.total;
-            }
+            const tracksData = await tracksRes.json();
             
             if (tracksData.items) {
               allTracks.push(...tracksData.items);
               trackCount += tracksData.items.length;
-              const total = totalTarget || trackCount;
               processingProgress = { 
-                current: Math.min(trackCount, total), 
-                total, 
-                stage: `Fetching tracks (${Math.min(trackCount, total)}/${total})...` 
+                current: trackCount, 
+                total: playlist.tracks || trackCount, 
+                stage: `Fetching tracks (${trackCount}/${playlist.tracks || trackCount})...` 
               };
             }
-            url = tracksData.next ? toApi(tracksData.next) : null;
+            
+            url = tracksData.next;
           }
-          const finalTotal = totalTarget || trackCount;
-          processingProgress = { current: Math.min(trackCount, finalTotal), total: finalTotal, stage: 'Tracks fetched.' };
         }
 
         // Cache the fetched tracks
@@ -378,7 +364,7 @@
 
         if (idsToFetch.length > 0) {
           const idsChunk = idsToFetch.join(',');
-          const artistsRes = await fetch(toApi(`artists?ids=${idsChunk}`), {
+          const artistsRes = await fetch(`https://api.spotify.com/v1/artists?ids=${idsChunk}`, {
             headers: {
               Authorization: `Bearer ${token}`
             }
