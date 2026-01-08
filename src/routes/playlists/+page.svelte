@@ -264,6 +264,7 @@
           localStorage.setItem('selected_playlist_id', 'liked-songs');
           let url = toApi('me/tracks?limit=50&fields=items(track(uri,artists(id))),next,total');
           let trackCount = 0;
+          let totalTarget = playlist.tracks || 0;
           
           while (url) {
             const likedTracksRes = await fetch(url, {
@@ -272,14 +273,17 @@
               }
             });
             const tracksData = await likedTracksRes.json();
+            if (!totalTarget && typeof tracksData.total === 'number') {
+              totalTarget = tracksData.total;
+            }
             
             if (tracksData.items) {
               allTracks.push(...tracksData.items);
               trackCount += tracksData.items.length;
               processingProgress = { 
                 current: trackCount, 
-                total: playlist.tracks || trackCount, 
-                stage: `Fetching tracks (${trackCount}/${playlist.tracks || trackCount})...` 
+                total: totalTarget || trackCount, 
+                stage: `Fetching tracks (${trackCount}/${totalTarget || trackCount})...` 
               };
             }
             url = tracksData.next ? toApi(tracksData.next) : '';
@@ -288,6 +292,7 @@
           localStorage.setItem('selected_playlist_id', playlist.id);
           let url = toApi(`playlists/${playlist.id}/tracks?limit=50&fields=items(track(uri,artists(id))),next,total`);
           let trackCount = 0;
+          let totalTarget = playlist.tracks || 0;
           
           while (url) {
             const tracksRes = await fetch(url, {
@@ -296,14 +301,17 @@
               }
             });
             const tracksData = await tracksRes.json();
+            if (!totalTarget && typeof tracksData.total === 'number') {
+              totalTarget = tracksData.total;
+            }
             
             if (tracksData.items) {
               allTracks.push(...tracksData.items);
               trackCount += tracksData.items.length;
               processingProgress = { 
                 current: trackCount, 
-                total: playlist.tracks || trackCount, 
-                stage: `Fetching tracks (${trackCount}/${playlist.tracks || trackCount})...` 
+                total: totalTarget || trackCount, 
+                stage: `Fetching tracks (${trackCount}/${totalTarget || trackCount})...` 
               };
             }
             url = tracksData.next ? toApi(tracksData.next) : '';
