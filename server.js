@@ -3,11 +3,17 @@
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 
 // Allow JSON bodies for non-GET methods
 app.use(express.json({ limit: '1mb' }));
+
+// Serve static files from the build directory
+app.use(express.static(path.join(__dirname, 'build')));
 
 // CORS: allow GH Pages and local dev; can override via ALLOWED_ORIGINS
 const defaultOrigins = [
@@ -65,6 +71,11 @@ app.all('/api/spotify/*', async (req, res) => {
     console.error('Proxy error:', err);
     res.status(500).json({ error: 'Proxy error', message: err?.message || String(err) });
   }
+});
+
+// Serve index.html for SPA routing (must be after API routes)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
 const PORT = process.env.PORT || 10000;
