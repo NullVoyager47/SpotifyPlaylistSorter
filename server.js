@@ -74,8 +74,13 @@ app.all('/api/spotify/*', async (req, res) => {
   }
 });
 
-// Serve index.html for SPA routing (must be after API routes)
+// Serve index.html for SPA routing (only for non-file requests)
 app.get('*', (req, res) => {
+  // Don't serve index.html for requests with file extensions
+  if (path.extname(req.path)) {
+    res.status(404).send('Not found');
+    return;
+  }
   res.sendFile(path.join(buildDir, 'index.html'));
 });
 
